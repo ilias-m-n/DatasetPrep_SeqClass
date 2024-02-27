@@ -66,14 +66,6 @@ def create_stratified_split_no_micro(df, label = "label", split_sizes = {"train"
         for s in split_sizes:
             indexes[l][s] = [int(round_half_up(current_index)), int(round_half_up(current_index+no_samples * split_sizes[s], 0))]
             current_index += no_samples * split_sizes[s]
-
-        # correct indexes to full range
-        #if indexes[l][list(split_sizes.keys())[-1]][-1] < no_samples:
-        #    for s in split_sizes:
-        #        indexes[l][s][1] += 1
-        #        if indexes[l][s][0] != 0:
-        #            indexes[l][s][0] += 1    
-        #print(indexes)
                     
     # create data splits
     for s in split_sizes:
