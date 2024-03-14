@@ -1,3 +1,6 @@
 /raw_data/*
 /datasets/*
 /old/*
+.ipynb_checkpoints/
+/utility/.ipynb_checkpoints/*
+/utility/__pycache__/*

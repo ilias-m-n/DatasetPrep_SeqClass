@@ -1,25 +1,31 @@
 from collections import Counter
-from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concatenate_datasets
+from datasets import Dataset, DatasetDict, load_dataset, load_from_disk, concatenate_datasets, Features
 import pandas as pd
 import os
 import re
 from tqdm import tqdm
 from itertools import product
 import math
+from typing import Optional
 
-def round_half_up(n, decimals=0):
+def round_half_up(n: float, decimals: int = 0) -> float:
     multiplier = 10**decimals
     return math.floor(n * multiplier + 0.5) / multiplier
 
-def round_half_away_from_zero(n, decimals=0):
+def round_half_away_from_zero(n: float, decimals: int = 0) -> float:
     rounded_abs = round_half_up(abs(n), decimals)
     return math.copysign(rounded_abs, n)
 
-def create_stratified_split(df, label = "label", split_sizes = {"training": .8, "validation": .1, "test": .1}, micro_labels = None, seed = 10):
+def create_stratified_split(df: pd.DataFrame, 
+                            label: str = "label", 
+                            split_sizes: dict[str, float] = {"training": .8, "validation": .1, "test": .1}, 
+                            micro_labels: Optional[list[str]] = None, 
+                            seed: int = 10) -> dict[pd.DataFrame]:
 
     if (micro_labels == None) or (len(micro_labels) == 0):
         return create_stratified_split_no_micro(df, split_sizes=split_sizes)
 
+    micro_labels = list(micro_labels.keys())
     res_df = {}
     for s in split_sizes:
         res_df[s] = pd.DataFrame()
@@ -42,7 +48,9 @@ def create_stratified_split(df, label = "label", split_sizes = {"training": .8, 
    
     return res_df
 
-def create_stratified_split_no_micro(df, label = "label", split_sizes = {"train": .8, "val": .1, "test": .1}, seed = 10):
+def create_stratified_split_no_micro(df: pd.DataFrame,
+                                     label: str = "label",
+                                     split_sizes: dict[str, float] = {"train": .8, "val": .1, "test": .1}, seed = 10) -> dict[pd.DataFrame]:
 
     # return dfs
     res_dfs = {}
@@ -76,7 +84,7 @@ def create_stratified_split_no_micro(df, label = "label", split_sizes = {"train"
 
     return res_dfs
 
-def parse_txt(file_path):
+def parse_txt(file_path : str) -> str:
     res = None
     # first check whether file exists
     if os.path.isfile(file_path):
@@ -93,7 +101,7 @@ def parse_txt(file_path):
                 return None
     return res
 
-def create_dataset_dict(data_split, features):
+def create_dataset_dict(data_split: dict[pd.DataFrame], features: Features) -> DatasetDict:
     for s in data_split:
         data_split[s] = Dataset.from_pandas(data_split[s], features)
 
@@ -210,12 +218,15 @@ def apply_sliding_window_to_example(ex_dict, col_id, col_text, tokenizer, max_to
     num_segments = max(0,math.ceil((num_tokens-max_token_per_example)/slide_step_size)) + 1
     indeces = [(slide_step_size*i, max_token_per_example + slide_step_size * i) for i in range(num_segments)]
     indeces[-1] = (indeces[-1][0], num_tokens +1)
-
+    
+                   
     if not flag_full:
-        num_segments = sum([no_windows[side] for side in no_windows])
-        front_indeces = [indeces[i] for i in range(no_windows["front"])]
-        back_indeces = [indeces[i] for i in range(-1,-no_windows["back"]-1,-1)]
-        indeces = front_indeces + back_indeces
+        num_wind_segments = sum([no_windows[side] for side in no_windows])
+        if (len(indeces) > num_wind_segments):
+            num_segments = num_wind_segments
+            front_indeces = [indeces[i] for i in range(no_windows["front"])]
+            back_indeces = [indeces[i] for i in range(-1,-no_windows["back"]-1,-1)]
+            indeces = front_indeces + back_indeces
 
     ids = [id + "_" + str(i) for i in range(num_segments)]
     segments = [tokenizer.decode(tokens[index[0]:index[1]]) for index in indeces]
